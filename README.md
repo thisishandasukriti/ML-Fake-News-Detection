@@ -1,12 +1,12 @@
 # ML-Fake-News-Detection using Machine Learning
 
-## 📌 Overview
+## Overview
 This project focuses on detecting fake news articles using **Machine Learning**, specifically **Logistic Regression**.  
 The model is trained on textual data and enhanced with **TF-IDF vectorization** and additional numerical features such as text length and word count.
 
 ---
 
-## 🎯 Objectives
+##  Objectives
 - Classify news articles as **Fake** or **Real**
 - Apply **text preprocessing and feature engineering**
 - Train and evaluate a **Logistic Regression model**
@@ -15,7 +15,7 @@ The model is trained on textual data and enhanced with **TF-IDF vectorization** 
 
 ---
 
-## 📂 Project Structure:
+##  Project Structure:
 Fake News Detection/
 │
 ├── data/
@@ -38,16 +38,16 @@ Fake News Detection/
 
 ---
 
-## 📊 Dataset
+##  Dataset
 - **Name:** WELFake Dataset  
 - **Source:** Kaggle  
 - **Link:** https://www.kaggle.com/datasets/saurabhshahane/fake-news-classification  
 
-> ⚠️ The dataset (~240MB) is not included in this repository due to size limitations.
+>  The dataset (~240MB) is not included in this repository due to size limitations.
 
 ---
 
-## ⚙️ Features Used
+##  Features Used
 - **TF-IDF Features** (Top 3000 terms)
 - **Text-based features:**
   - Text length
@@ -56,7 +56,7 @@ Fake News Detection/
 
 ---
 
-## 🧠 Model Details
+## Model Details
 - **Algorithm:** Logistic Regression  
 - **Solver:** saga  
 - **Max Iterations:** 1000  
@@ -65,7 +65,7 @@ Fake News Detection/
 
 ---
 
-## 📈 Evaluation Metrics
+##  Evaluation Metrics
 - Accuracy  
 - Precision  
 - Recall  
@@ -75,7 +75,7 @@ Fake News Detection/
 
 ---
 
-## 🔍 Additional Analysis
+##  Additional Analysis
 - Exploratory Data Analysis (EDA)
 - Feature correlation heatmap
 - Cross-validation performance comparison
@@ -83,7 +83,7 @@ Fake News Detection/
 
 ---
 
-## 🖼️ Outputs
+##  Outputs
 All outputs are saved in the `/outputs` folder:
 - EDA graphs
 - Model performance charts
@@ -91,12 +91,5 @@ All outputs are saved in the `/outputs` folder:
 - ROC curve
 - Cross-validation plots
 - Serialized model and vectorizer (`.pkl` files)
-
 ---
 
-## ▶️ How to Run
-
-1. Download the dataset from Kaggle:
-   https://www.kaggle.com/datasets/saurabhshahane/fake-news-classification  
-
-2. Place the dataset file inside the `data/` folder:
