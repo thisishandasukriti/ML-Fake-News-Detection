@@ -19,6 +19,8 @@ import nltk
 from nltk.corpus import stopwords
 import warnings
 import os
+import pickle
+
 
 warnings.filterwarnings("ignore")
 
@@ -90,7 +92,47 @@ except LookupError:
 # 1. LOAD DATA
 # ─────────────────────────────────────────────
 section("1. LOADING DATASET")
-df = pd.read_csv("data/15_fake_news_detection.csv")
+df = pd.read_csv("data\WELFake_Dataset.csv")
+df = df.dropna()
+df = df.drop_duplicates()
+# Convert label to numeric (force invalid → NaN)
+df["label"] = pd.to_numeric(df["label"], errors="coerce")
+
+# Remove rows where label is missing
+df = df.dropna(subset=["label"])
+
+# Keep only valid labels
+df = df[df["label"].isin([0, 1])]
+
+# Convert to integer
+df["label"] = df["label"].astype(int)
+
+# Map labels
+df["label"] = df["label"].map({0: "fake", 1: "real"})
+# Remove rows with missing text/title
+df = df.dropna(subset=["text", "title"])
+
+# Remove empty strings
+df = df[(df["text"].str.strip() != "") & (df["title"].str.strip() != "")]
+
+# Reset index after cleaning
+df = df.reset_index(drop=True)
+
+# Remove rows with missing text/title
+df = df.dropna(subset=["text", "title"])
+
+# Remove empty strings
+df = df[(df["text"].str.strip() != "") & (df["title"].str.strip() != "")]
+
+print("Remaining rows:", len(df))
+print("NaN in label:", df["label"].isna().sum())
+print("Unique labels:", df["label"].unique())
+
+# ✅ Sample for faster training
+df = df.sample(10000, random_state=42)
+
+# ✅ IMPORTANT: reset index after sampling
+df = df.reset_index(drop=True)
 
 subsection("Structure")
 bullet("Shape", str(df.shape))
@@ -119,7 +161,9 @@ for label, cnt in counts.items():
 # ─────────────────────────────────────────────
 section("3. FEATURE ENGINEERING")
 
-df["label_num"]   = (df["label"] == "fake").astype(int)
+df["label_num"] = df["label"].map({"fake": 1, "real": 0})
+df = df.dropna(subset=["label_num"])
+df["label_num"] = df["label_num"].astype(int)
 df["text_length"] = df["text"].apply(lambda x: len(str(x)))
 df["word_count"]  = df["text"].apply(lambda x: len(str(x).split()))
 df["title_length"]= df["title"].apply(lambda x: len(str(x)))
@@ -143,15 +187,23 @@ df[["raw_text", "tokens"]] = df["text"].apply(
 )
 
 # TF-IDF
-vectorizer = TfidfVectorizer(max_features=5000)
-X_tfidf    = vectorizer.fit_transform(df["text"])
+vectorizer = TfidfVectorizer(max_features=1000)
+df["content"] = df["title"] + " " + df["text"]
+X_tfidf    = vectorizer.fit_transform(df["content"])
 tfidf_df   = pd.DataFrame(X_tfidf.toarray(), columns=vectorizer.get_feature_names_out())
 df         = pd.concat([df, tfidf_df], axis=1)
 
 # Normalise numeric features
 scaler = MinMaxScaler()
-df[["text_length_scaled", "word_count_scaled", "title_length_scaled"]] = scaler.fit_transform(
+
+scaled_values = scaler.fit_transform(
     df[["text_length", "word_count", "title_length"]]
+)
+
+df[["text_length_scaled", "word_count_scaled", "title_length_scaled"]] = pd.DataFrame(
+    scaled_values,
+    columns=["text_length_scaled", "word_count_scaled", "title_length_scaled"],
+    index=df.index
 )
 
 subsection("Feature engineering complete")
@@ -239,24 +291,35 @@ save_fig("03_correlation_heatmap.png")
 # ─────────────────────────────────────────────
 section("5. LOGISTIC REGRESSION — TRAINING")
 
-X = df.select_dtypes(include=[np.number]).drop(columns=["label_num"])
+X = df.drop(columns=["label", "label_num", "raw_text", "tokens", "content"])
+X = X.select_dtypes(include=[np.number])
 y = df["label_num"]
+
+print("NaN in label_num:", df["label_num"].isna().sum())
 
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
 
-log_reg = LogisticRegression(max_iter=1000, solver="saga", n_jobs=-1)
+log_reg = LogisticRegression(max_iter=200, solver="liblinear")
 log_reg.fit(X_train, y_train)
 
+# Save trained model
+with open(os.path.join(OUTPUT_DIR, "model.pkl"), "wb") as f:
+    pickle.dump(log_reg, f)
+
+# Save vectorizer
+with open(os.path.join(OUTPUT_DIR, "vectorizer.pkl"), "wb") as f:
+    pickle.dump(vectorizer, f)
+    
 subsection("Dataset splits")
 bullet("Train samples", str(len(X_train)))
 bullet("Test  samples", str(len(X_test)))
 
 # ── Cross-Validation ──────────────────────────────────────────────────────────
 section("6. CROSS-VALIDATION (5-FOLD)")
-cv_acc = cross_val_score(log_reg, X, y, cv=5, scoring="accuracy",  n_jobs=-1)
-cv_auc = cross_val_score(log_reg, X, y, cv=5, scoring="roc_auc",   n_jobs=-1)
+cv_acc = cross_val_score(log_reg, X, y, cv=5, scoring="accuracy", n_jobs=1)
+cv_auc = cross_val_score(log_reg, X, y, cv=5, scoring="roc_auc", n_jobs=1)
 
 subsection("Accuracy per fold")
 for i, s in enumerate(cv_acc, 1):
